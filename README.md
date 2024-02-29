@@ -1,2 +1,1 @@
-# nodejs20.x-template-1.0
-
+The node.js example app
