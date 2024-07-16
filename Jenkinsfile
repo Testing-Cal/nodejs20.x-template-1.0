@@ -207,7 +207,7 @@ def agentLabel = "${env.JENKINS_AGENT == null ? "":env.JENKINS_AGENT}"
 pipeline {
     agent { label agentLabel }
     environment {
-        DEFAULT_STAGE_SEQ = "'Initialization','Build','UnitTests','SonarQubeScan','BuildContainerImage','QualysScan','PublishContainerImage','Deploy','FunctionalTests','Destroy'"
+        DEFAULT_STAGE_SEQ = "'Initialization','Build','UnitTests','SonarQubeScan','BuildContainerImage','containerImageScan','PublishContainerImage','Deploy','FunctionalTests','Destroy'"
         CUSTOM_STAGE_SEQ = "${DYNAMIC_JENKINS_STAGE_SEQUENCE}"
         PROJECT_TEMPLATE_ACTIVE = "${DYNAMIC_JENKINS_STAGE_NEEDED}"
         LIST = "${env.PROJECT_TEMPLATE_ACTIVE == 'true' ? env.CUSTOM_STAGE_SEQ : env.DEFAULT_STAGE_SEQ}"
@@ -255,6 +255,7 @@ pipeline {
                     env.TESTCASECOMMAND = generalPresent.testcaseCommand
                     env.TESTINGTOOLTYPE = generalPresent.testingToolType
                     env.BROWSERTYPE = generalPresent.browserType
+                    env.CONTAINERSCANTYPE = metadataVars.containerScanType
 
                     if (env.DEPLOYMENT_TYPE == 'KUBERNETES' || env.DEPLOYMENT_TYPE == 'OPENSHIFT') {
                         String kubeProperties = parseJsonString(env.JENKINS_METADATA,'kubernetes')
@@ -363,7 +364,34 @@ pipeline {
                                     }
                                 }
                             }
-                        } else if ("${list[i]}" == "'Build'" && env.ACTION == 'DEPLOY') {
+                        } else if ("${list[i]}" == "'containerImageScan'" && stage_flag['containerScan']) {
+                             stage("Container Image Scan") {
+                                 if (env.CONTAINERSCANTYPE == 'XRAY') {
+                                     jf 'docker scan $REGISTRY_URL:$BUILD_TAG'
+                                 }
+                                 if(env.CONTAINERSCANTYPE == 'QUALYS'){
+                                      getImageVulnsFromQualys credentialsId: "${metadataVars.qualysCredentialId}", imageIds: env.REGISTRY_URL+":"+env.BUILD_TAG, pollingInterval: '30', useLocalConfig: true, apiServer: "${metadataVars.qualysServerURL}", platform: 'PCP', vulnsTimeout: '600'
+                                 }
+                                 if(env.CONTAINERSCANTYPE == 'RAPID7'){
+                                     assessContainerImage failOnPluginError: true,
+                                                 imageId: env.REGISTRY_URL+":"+env.BUILD_TAG,
+                                                 thresholdRules: [
+                                                         exploitableVulnerabilities(action: 'Mark Unstable', threshold: '1'),
+                                                         criticalVulnerabilities(action: 'Fail', threshold: '1')
+                                                 ],
+                                                 nameRules: [
+                                                         vulnerablePackageName(action: 'Fail', contains: 'nginx')
+                                                 ]
+                                 }
+                                 if(env.CONTAINERSCANTYPE == 'SYSDIG'){
+                                    sh 'echo  $REGISTRY_URL:$BUILD_TAG > sysdig_secure_images'
+                                         sysdig inlineScanning: true, bailOnFail: true, bailOnPluginFail: true, name: 'sysdig_secure_images'
+                                 }
+
+                             }
+
+                        }
+                        else if ("${list[i]}" == "'Build'" && env.ACTION == 'DEPLOY') {
                             stage('Build') {
                                 script {
                                 echo "echoed BUILD_TAG--- $BUILD_TAG"
@@ -439,31 +467,6 @@ pipeline {
                                       }
                                 }
                       }
-                         else if ("${list[i]}" == "'QualysScan'" && env.ACTION == 'DEPLOY' && stage_flag['qualysScan']) {
-                            stage('Qualys Scan') {
-                                getImageVulnsFromQualys credentialsId: "${generalPresent.qualysCredentialId}", imageIds: env.REGISTRY_URL+":"+env.BUILD_TAG, pollingInterval: '30', useLocalConfig: true, apiServer: "${generalPresent.qualysServerURL}", platform: 'PCP', vulnsTimeout: '600'
-                            }
-                        }
-                        else if ("${list[i]}" == "'Rapid7Scan'" && env.ACTION == 'DEPLOY' && stage_flag['rapid7Scan']) {
-                            stage('Rapid7 Scan') {
-                                assessContainerImage failOnPluginError: true,
-                                        imageId: env.REGISTRY_URL+":"+env.BUILD_TAG,
-                                        thresholdRules: [
-                                                exploitableVulnerabilities(action: 'Mark Unstable', threshold: '1'),
-                                                criticalVulnerabilities(action: 'Fail', threshold: '1')
-                                        ],
-                                        nameRules: [
-                                                vulnerablePackageName(action: 'Fail', contains: 'nginx')
-                                        ]
-                            }
-                        }
-                        else if ("${list[i]}" == "'SysdigScan'" && env.ACTION == 'DEPLOY' && stage_flag['sysdigScan']) {
-                            stage('Sysdig Scan') {
-                                sh 'echo  $REGISTRY_URL:$BUILD_TAG > sysdig_secure_images'
-                                sysdig inlineScanning: true, bailOnFail: true, bailOnPluginFail: true, name: 'sysdig_secure_images'
-                            }
-                        }
-
                         else if ("${list[i]}" == "'Deploy'") {
                             stage('Deploy') {
                                 // stage details here
