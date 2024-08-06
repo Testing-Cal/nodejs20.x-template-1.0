@@ -126,5 +126,8 @@ docs/_book
 
 # TODO: where does this rule come from?
 # test/
+sonar-report.xml
+
+
 
 **-lock.json
