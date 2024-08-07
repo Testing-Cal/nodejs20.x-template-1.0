@@ -326,7 +326,7 @@ pipeline {
                             stage('Unit Tests') {
                                 sh 'export port=$SERVICE_PORT'                                
                                 sh """
-                                docker run --rm --user root -v "$WORKSPACE":/opt/repo -w /opt/repo $NODE_IMAGE /bin/bash -c "cd /opt/repo &&  npm install && npm test -- --watchAll=false"
+                                docker run --rm --user root -v "$WORKSPACE":/opt/repo -w /opt/repo $NODE_IMAGE /bin/bash -c "cd /opt/repo &&  npm install && npm run test -- --watchAll=false"
                                 sudo chown -R `id -u`:`id -g` "$WORKSPACE"
                                 """
                             }
@@ -345,7 +345,7 @@ pipeline {
                                         sed -i s+#RELEASE_NAME#+"${sonar_project_key}"+g ./sonar-project.properties
                                         sed -i s+#SONAR_ORGANIZATION#+"${metadataVars.sonarOrg}"+g ./sonar-project.properties
                                         export port=$SERVICE_PORT
-                                        docker run --rm --user root -v "$WORKSPACE":/opt/repo -w /opt/repo $NODE_IMAGE /bin/bash -c "chown -R root:root /opt/repo && npm install sonarqube-scanner -f &&  npm test -- --coverage && npm run sonar"
+                                        docker run --rm --user root -v "$WORKSPACE":/opt/repo -w /opt/repo $NODE_IMAGE /bin/bash -c "chown -R root:root /opt/repo && npm install sonarqube-scanner -f &&  npm run test -- --coverage && npm run sonar"
                                         sudo chown -R `id -u`:`id -g` "$WORKSPACE"
                                         """
                                     }
@@ -358,7 +358,7 @@ pipeline {
                                         sed -i s+#RELEASE_NAME#+"${sonar_project_key}"+g ./sonar-project.properties
                                         sed -i s+#SONAR_ORGANIZATION#+"${metadataVars.sonarOrg}"+g ./sonar-project.properties
                                         export port=$SERVICE_PORT
-                                        docker run --rm --user root -v "$WORKSPACE":/opt/repo -w /opt/repo $NODE_IMAGE /bin/bash -c "chown -R root:root /opt/repo && npm install sonarqube-scanner -f && npm test -- --coverage && npm run sonar"
+                                        docker run --rm --user root -v "$WORKSPACE":/opt/repo -w /opt/repo $NODE_IMAGE /bin/bash -c "chown -R root:root /opt/repo && npm install sonarqube-scanner -f && npm run test -- --coverage && npm run sonar"
                                         sudo chown -R `id -u`:`id -g` "$WORKSPACE"                                        
                                         """
                                     }
