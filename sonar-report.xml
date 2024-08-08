@@ -1,5 +1,0 @@
-<testExecutions version="1">
-  <file path="src/app.test.js">
-    <testCase name="Should test string get" duration="6"/>
-  </file>
-</testExecutions>
