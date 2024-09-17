@@ -1,4 +1,4 @@
-FROM node:20.11.1
+FROM node:20.11.1-slim
 
 # set working directory
 WORKDIR /app
@@ -16,7 +16,7 @@ COPY package.json ./
 RUN npm install
 
 # add app
-COPY . ./
+COPY src ./src
 
 # start app
 CMD ["node", "./src/app.js"]
